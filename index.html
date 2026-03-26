@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>No Estás Sola - Valencia</title>
+<link rel="icon" type="image/png" href="ay.png" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(180deg, #fffbea 0%, #f9c700 80%);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #222;
+  }
+  #ayuntamientoBanner {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 10px 15px;
+    border-radius: 12px;
+    background: #f9c700;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  #ayuntamientoBanner img { height: 40px; }
+  #ayuntamientoBanner .ay-text { font-weight: 700; color: #222; font-size: 1.1rem; text-align: center; flex: 1; }
+  h1 { color: #333; font-weight: 700; margin-bottom: 10px; text-shadow: 0 1px 0 #f9c700; letter-spacing: 1px; }
+  #map { height: 520px; width: 90%; max-width: 1000px; border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.15); border: 2px solid #333; background: white; margin-bottom: 15px; }
+  label[for="tipoSOS"] { font-weight: 700; font-size: 16px; color: #222; margin-bottom: 5px; display: inline-flex; align-items: center; gap: 8px; }
+  label[for="tipoSOS"] img { width: 20px; height: 20px; }
+  #tipoSOS { padding: 8px 12px; font-size: 16px; border: 2px solid #222; border-radius: 10px; background: #fffbea; color: #222; cursor: pointer; margin-bottom: 15px; min-width: 160px; }
+  #tipoSOS:hover, #tipoSOS:focus { border-color: #f9c700; outline: none; }
+  .boton-sos { font-weight: 700; padding: 12px 36px; font-size: 18px; border-radius: 12px; border: 2px solid #222; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; margin: 8px 10px 20px 10px; min-width: 180px; user-select: none; }
+  .boton-sos.sos { background: #f9c700; color: #222; }
+  .boton-sos.sos:hover { background: #fffbea; border-color: #f9c700; color: #f9c700; box-shadow: 0 0 8px #f9c700; }
+  .boton-sos.finish { background: #222; color: #f9c700; }
+  .boton-sos.finish:hover { background: #444; color: #fffbea; border-color: #f9c700; }
+  footer { font-size: 0.9rem; font-weight: 700; color: #333; margin-top: 10px; max-width: 1000px; }
+  .popup-btn { background-color: #f9c700; border: 2px solid #222; border-radius: 10px; padding: 5px 12px; color: #222; font-weight: 700; cursor: pointer; margin-top: 5px; font-size: 0.9rem; transition: background-color 0.3s ease, color 0.3s ease; }
+  .popup-btn:hover { background-color: #fffbea; color: #f9c700; border-color: #f9c700; }
+  #perfilModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); }
+  #perfilModalContent { position: relative; margin: 4% auto; width: 90%; max-width: 820px; height: 78%; background: #fffbea; border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); overflow: hidden; }
+  #perfilModal iframe { width: 100%; height: 100%; border: none; }
+  #cerrarModal { position: absolute; top: 12px; right: 18px; font-size: 26px; font-weight: 700; color: #222; cursor: pointer; user-select: none; transition: color 0.3s ease; z-index: 1001; }
+  #cerrarModal:hover { color: #f9c700; }
+  #ayuntamientoFooter { width: 100%; max-width: 1000px; padding: 10px 15px; background: #fffbea; border-top: 2px solid #f9c700; color: #222; font-size: 0.85rem; text-align: center; margin-top: 20px; border-radius: 0 0 12px 12px; box-shadow: inset 0 1px 0 rgba(249,199,0,0.3); }
+  #menuBtn { position: fixed; right: 20px; top: 260px; width: 50px; height: 50px; background: #222; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  #menuBtn span { width: 22px; height: 3px; background: #f9c700; margin: 3px 0; }
+  #panelPreferencias { position: fixed; right: -280px; top: 240px; width: 250px; background: #fffbea; border: 2px solid #222; border-radius: 12px 0 0 12px; padding: 15px; box-shadow: -4px 4px 10px rgba(0,0,0,0.2); transition: right 0.4s ease; z-index: 1999; }
+  #panelPreferencias.activo { right: 0; }
+</style>
+</head>
+<body>
+
+<div id="ayuntamientoBanner">
+  <img src="ay.png" alt="Logo Ayuntamiento de Valencia" />
+  <div class="ay-text">Ayuntamiento de Valencia - Seguridad y Servicios Ciudadanos</div>
+</div>
+
+<h1>🚨 No Estás Sola</h1>
+
+<label for="tipoSOS">Tipo de emergencia
+  <img id="iconoSeleccionado" src="violacion.png" alt="Icono emergencia" />
+</label>
+<select id="tipoSOS" aria-label="Seleccionar tipo de emergencia">
+  <option value="pelea" data-icon="espadas.png">Pelea</option>
+  <option value="violacion" data-icon="violacion.png" selected>Violación</option>
+  <option value="acosador" data-icon="acosador.png">Acosador</option>
+</select>
+
+<div>
+  <button class="boton-sos sos" onclick="activarSOS()">¡SOS! Envíame ayuda</button>
+  <button class="boton-sos finish" onclick="finalizarSOS()">Fin del problema</button>
+</div>
+
+<div id="map"></div>
+
+<div id="ayuntamientoFooter">
+  Información oficial y apoyo del Ayuntamiento de Valencia para la seguridad ciudadana.
+</div>
+
+<footer>Mapa interactivo de Valencia – App de seguridad comunitaria</footer>
+
+<!-- MENÚ LATERAL -->
+<div id="menuBtn" onclick="togglePanel()">
+  <span></span>
+  <span></span>
+  <span></span>
+</div>
+
+<div id="panelPreferencias">
+  <h3>⚙️ Preferencias</h3>
+  <label><input type="checkbox"> SOS Público</label><br><br>
+</div>
+
+<div id="perfilModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div id="perfilModalContent">
+    <span id="cerrarModal" role="button" aria-label="Cerrar ventana perfil">&times;</span>
+    <iframe src="" title="Perfil usuario"></iframe>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+<script>
+const valencia = [39.4699, -0.3763];
+const map = L.map('map').setView(valencia, 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+const iconos = { pelea: 'espadas.png', violacion: 'violacion.png', acosador: 'acosador.png' };
+const iconoNeutro = 'actual.png';
+const iconoPolicia = 'poli.png';
+
+let marcadorPrincipal = L.marker(valencia, {
+  icon: L.icon({ iconUrl: iconoNeutro, iconSize:[32,32], iconAnchor:[16,32] })
+}).addTo(map).bindPopup('Tú');
+
+let sosActivo = false;
+const nombresUsuarios = ['Luna','Aurora','Violeta','Sol','Nube','Estrella','Mar','Cielo','Coral','Brisa','Rosa','Jade','Lirio','Ambar','Flora','Selva','Alba','Oceana','Nieve','Oliva','Leo','Mateo','Lucas','Hugo','Adrian','Daniel','Javier','David','Ivan','Carlos','Alvaro','Sergio','Mario','Gabriel','Pablo','Andres','Victor','Enrique','Marco','Diego'];
+
+function generarNombreAleatorio() { return nombresUsuarios[Math.floor(Math.random()*nombresUsuarios.length)]; }
+
+let markers = [];
+
+function moverMarcador(marker) {
+  let latlng = marker.getLatLng();
+  let direccionLat = (Math.random() - 0.5) * 0.0002;
+  let direccionLng = (Math.random() - 0.5) * 0.0002;
+
+  const intervalo = setInterval(() => {
+    latlng = marker.getLatLng();
+    const nuevaLat = latlng.lat + direccionLat;
+    const nuevaLng = latlng.lng + direccionLng;
+    marker.setLatLng([nuevaLat, nuevaLng]);
+
+    if (Math.random() < 0.1) {
+      direccionLat = (Math.random() - 0.5) * 0.0005;
+      direccionLng = (Math.random() - 0.5) * 0.0005;
+    }
+  }, 2500);
+
+  marker._intervaloMovimiento = intervalo;
+}
+
+function agregarMarcadorAleatorio() {
+  const lat = 39.45 + Math.random()*0.05;
+  const lng = -0.40 + Math.random()*0.05;
+  const nombre = generarNombreAleatorio();
+  const situaciones = ['pelea','violacion','acosador'];
+  const situacion = situaciones[Math.floor(Math.random()*situaciones.length)];
+  let iconUrl = iconos[situacion];
+  const popupContent = `<b>${nombre}</b><br><button class="popup-btn" onclick="abrirPerfil('${nombre}')">Perfil</button>`;
+  const marker = L.marker([lat,lng], {
+    icon: L.icon({iconUrl: iconUrl, iconSize:[32,32], iconAnchor:[16,32]})
+  }).addTo(map).bindPopup(popupContent);
+
+  markers.push(marker);
+  moverMarcador(marker);
+
+  const tiempo = 60000 + Math.random()*120000;
+  setTimeout(()=>{
+    clearInterval(marker._intervaloMovimiento);
+    map.removeLayer(marker);
+    markers = markers.filter(m => m!==marker);
+  }, tiempo);
+}
+
+function generarMarcadoresGraduales() {
+  const intervalo = 5000 + Math.random()*5000;
+  agregarMarcadorAleatorio();
+  setTimeout(generarMarcadoresGraduales, intervalo);
+}
+generarMarcadoresGraduales();
+
+const selectTipo = document.getElementById('tipoSOS');
+const iconoSeleccionado = document.getElementById('iconoSeleccionado');
+function actualizarIconoSeleccionado(){
+  const opcion = selectTipo.options[selectTipo.selectedIndex];
+  const icono = opcion.getAttribute('data-icon');
+  iconoSeleccionado.src = icono;
+}
+selectTipo.addEventListener('change', actualizarIconoSeleccionado);
+actualizarIconoSeleccionado();
+
+function activarSOS(){
+  const tipo = selectTipo.value;
+  let iconUrl = iconos[tipo] || iconoNeutro;
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition((pos)=>{
+      const ubicacion = [pos.coords.latitude, pos.coords.longitude];
+      marcadorPrincipal.setLatLng(ubicacion)
+        .setIcon(L.icon({iconUrl:iconUrl, iconSize:[40,40], iconAnchor:[20,40]}))
+        .bindPopup(`Tú - ${tipo}<br>🚨 Se ha avisado a la policía`).openPopup();
+      map.setView(ubicacion,15);
+      sosActivo = true;
+      alert(`🚨 SOS activado para "${tipo}"\n✅ Se ha avisado a la policía`);
+    }, ()=>{
+      alert("No se pudo obtener tu ubicación");
+    });
+  } else {
+    alert("Tu navegador no soporta geolocalización");
+  }
+}
+
+function finalizarSOS(){
+  if(!sosActivo){
+    alert("❌ No hay ninguna emergencia activa");
+    return;
+  }
+  marcadorPrincipal.setIcon(L.icon({iconUrl:iconoNeutro, iconSize:[32,32], iconAnchor:[16,32]}))
+                  .bindPopup('Tú').openPopup();
+  map.setView(valencia,13);
+  sosActivo = false;
+  alert("✅ Emergencia finalizada. Marcador principal restaurado a neutro.");
+}
+
+const modal = document.getElementById('perfilModal');
+const modalIframe = modal.querySelector('iframe');
+const cerrarModal = document.getElementById('cerrarModal');
+function abrirPerfil(nombre){
+  modalIframe.src = `perfil.html?nombre=${encodeURIComponent(nombre)}`;
+  modal.style.display = 'block';
+}
+cerrarModal.onclick = ()=>{
+  modal.style.display = 'none';
+  modalIframe.src = '';
+}
+window.onclick = (event)=>{
+  if(event.target==modal){
+    modal.style.display = 'none';
+    modalIframe.src = '';
+  }
+}
+
+// POLICIAS Y RUTAS
+
+const policias = [];
+const velocidadPolicia = 0.00015; // controla velocidad movimiento policía (ajusta para que sea lento)
+
+// Crear 5 policías en posiciones aleatorias iniciales
+function crearPolicia() {
+  const lat = 39.45 + Math.random()*0.05;
+  const lng = -0.40 + Math.random()*0.05;
+  const marker = L.marker([lat, lng], {
+    icon: L.icon({iconUrl: iconoPolicia, iconSize: [36,36], iconAnchor: [18,18]})
+  }).addTo(map).bindPopup('Coche Policía');
+  return {
+    marker,
+    objetivo: null,
+    ruta: [],
+    pasoActual: 0,
+    enMovimiento: false
+  };
+}
+for(let i=0; i<5; i++) policias.push(crearPolicia());
+
+// Asignar objetivos únicos (marcadores SOS + marcador principal si activo)
+function asignarObjetivosUnicos() {
+  const objetivos = [];
+  if(sosActivo) objetivos.push(marcadorPrincipal);
+  objetivos.push(...markers);
+
+  // Limitar objetivos a máximo policias para evitar sin asignar
+  while(objetivos.length > policias.length) objetivos.pop();
+
+  const usados = new Set();
+  policias.forEach(pol=>{
+    pol.objetivo = null;
+  });
+
+  policias.forEach(pol=>{
+    for(let obj of objetivos){
+      if(!usados.has(obj)){
+        pol.objetivo = obj;
+        usados.add(obj);
+        break;
+      }
+    }
+  });
+}
+
+// Solicitar ruta desde posición policía hasta objetivo con Leaflet Routing Machine (sin mostrar panel)
+function solicitarRuta(pol) {
+  return new Promise((resolve)=>{
+    if(!pol.objetivo) {
+      resolve([]);
+      return;
+    }
+    const control = L.Routing.control({
+      waypoints: [pol.marker.getLatLng(), pol.objetivo.getLatLng()],
+      createMarker: () => null,
+      addWaypoints: false,
+      routeWhileDragging: false,
+      show: false,
+      fitSelectedRoutes: false,
+      draggableWaypoints: false
+    }).addTo(map);
+
+    control.on('routesfound', function(e) {
+      const ruta = e.routes[0].coordinates;
+      control.remove();
+      resolve(ruta);
+    });
+
+    // Timeout fallback en caso de error (por si la API no responde)
+    setTimeout(() => {
+      control.remove();
+      resolve([]);
+    }, 10000);
+  });
+}
+
+// Mover policía paso a paso hacia su objetivo siguiendo ruta
+function moverPoliciaPaso(pol) {
+  if(pol.pasoActual >= pol.ruta.length) {
+    pol.enMovimiento = false;
+    return;
+  }
+  pol.enMovimiento = true;
+  const puntoActual = pol.ruta[pol.pasoActual];
+  pol.marker.setLatLng(puntoActual);
+  pol.pasoActual++;
+
+  setTimeout(() => {
+    moverPoliciaPaso(pol);
+  }, 300);
+}
+
+// Actualizar rutas y mover policías
+async function actualizarRutasYMovimientos() {
+  if(!sosActivo) {
+    // Si no hay SOS activo, policías no persiguen
+    policias.forEach(pol=>{
+      pol.objetivo = null;
+      pol.ruta = [];
+      pol.enMovimiento = false;
+    });
+    return;
+  }
+
+  asignarObjetivosUnicos();
+
+  for(const pol of policias){
+    if(pol.objetivo){
+      const nuevaRuta = await solicitarRuta(pol);
+      if(nuevaRuta.length > 0){
+        pol.ruta = nuevaRuta;
+        pol.pasoActual = 0;
+        if(!pol.enMovimiento){
+          moverPoliciaPaso(pol);
+        }
+      }
+    } else {
+      pol.ruta = [];
+      pol.enMovimiento = false;
+    }
+  }
+}
+
+// Actualizar movimiento cada 15 segundos (puedes ajustar)
+setInterval(() => {
+  if(sosActivo) actualizarRutasYMovimientos();
+}, 15000);
+
+// Panel preferencias toggle
+function togglePanel(){
+  const panel = document.getElementById('panelPreferencias');
+  panel.classList.toggle('activo');
+}
+</script>
+
+</body>
+</html>
